@@ -32,13 +32,26 @@ services:
 
   api:
     build:
-      context: ./services/api
+      context: .
+      dockerfile: services/api/Dockerfile
     env_file: .env
     depends_on:
       - postgres
       - redis
     ports:
       - '8080:8080'
+    volumes:
+      - ./infra/certs/api-syncave-app.crt:/app/certs/api-syncave-app.crt:ro
+      - ./infra/certs/api-syncave-app.key:/app/certs/api-syncave-app.key:ro
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://localhost:8080/health').then(r=>{if(!r.ok) process.exit(1);}).catch(()=>process.exit(1));"
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
   bot:
     build:
@@ -49,16 +62,27 @@ services:
       - api
       - lavalink
       - redis
+      - postgres
     restart: unless-stopped
 
   activity:
     build:
-      context: ./services/activity
+      context: .
+      dockerfile: services/activity/Dockerfile
     env_file: .env
     depends_on:
       - api
     ports:
-      - '5173:5173'
+      - '5173:80'
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://localhost').then(r=>{if(!r.ok) process.exit(1);}).catch(()=>process.exit(1));"
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
 volumes:
   pg:

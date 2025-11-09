@@ -14,6 +14,7 @@ COPY infra ./infra
 RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
+RUN pnpm --filter @tonedial/shared build
 RUN pnpm --filter @tonedial/bot build
 RUN pnpm deploy --filter @tonedial/bot --prod /app/out
 

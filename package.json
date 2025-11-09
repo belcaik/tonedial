@@ -4,7 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev:all": "docker compose up --build",
+    "migrate": "pnpm --filter @tonedial/api migrate",
+    "seed": "node scripts/seed-placeholder.mjs",
+    "test": "node --test packages/shared/tests/**/*.test.ts"
   },
   "keywords": [],
   "author": "",

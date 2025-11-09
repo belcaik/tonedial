@@ -73,6 +73,7 @@ web_modules/
 .serverless/
 .dynamodb/
 .tern-port
+services/activity/.tsbuild/
 
 # Editor / OS
 .vscode/
