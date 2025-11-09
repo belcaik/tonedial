@@ -1,0 +1,86 @@
+# Node / JavaScript
+# Created by https://www.toptal.com/developers/gitignore/api/node
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# Diagnostic reports
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage / reports
+coverage/
+*.lcov
+.nyc_output
+
+# Build / compiled output
+lib-cov
+build/
+dist/
+build/Release
+.next
+out
+.nuxt
+.vuepress/dist
+.temp
+.docusaurus
+.svelte-kit
+
+# Dependency directories
+node_modules/
+jspm_packages/
+bower_components/
+web_modules/
+
+# Package manager stores / lockfiles
+.pnpm-store/ # pnpm content-addressable store
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+# pnpm-lock.yaml
+
+# Tool caches
+*.tsbuildinfo
+.npm
+.eslintcache
+.stylelintcache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+.parcel-cache
+.cache
+
+# Misc
+.node_repl_history
+*.tgz
+.yarn-integrity
+.lock-wscript
+.fusebox/
+.serverless/
+.dynamodb/
+.tern-port
+
+# Editor / OS
+.vscode/
+.vscode-test
+.idea/
+.DS_Store
+
+# Environment
+.env
+.env.local
+.env.*.local
