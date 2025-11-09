@@ -1,0 +1,90 @@
+server:
+  port: 2333
+
+lavalink:
+  server:
+    password: ${LAVALINK_PASSWORD:-youshallnotpass}
+    sources:
+      # Desactiva el YouTube builtin para usar el plugin externo
+      youtube: false
+      bandcamp: true
+      soundcloud: true
+      http: true
+    bufferDurationMs: 400
+
+  # Descarga automática de plugins (Lavalink v4)
+  plugins:
+    - dependency: "dev.lavalink.youtube:youtube-plugin:1.16.0"
+      # repo opcional en v4 estable; usa releases oficiales
+      snapshot: false
+    - dependency: "com.github.topi314.lavasearch:lavasearch-plugin:1.0.0"
+      snapshot: false
+    - dependency: "com.github.topi314.lavasrc:lavasrc-plugin:4.8.1"
+      snapshot: false
+
+# ATENCIÓN: la configuración de plugins va a NIVEL RAÍZ
+plugins:
+  # YouTube plugin (youtube-source)
+  youtube:
+    enabled: true
+    allowSearch: true          # habilita ytsearch:/ytmsearch:
+    allowDirectVideoIds: true  # permite IDs directos de video
+    allowDirectPlaylistIds: true
+    # clients: se pueden listar para forzar clientes InnerTube concretos.
+    # deja vacío para los defaults robustos.
+
+  # LavaSearch: mejora resultados de búsqueda
+  lavasearch:
+    providers:
+      - ytsearch
+      - ytmmsearch
+      - scsearch
+
+  # LavaSrc: fuentes y “mirroring” para Spotify/Apple/Deezer/etc.
+  lavasrc:
+    providers:
+      - 'ytsearch:"%ISRC%"'
+      - 'ytsearch:%QUERY%'
+    sources:
+      spotify: false
+      applemusic: false
+      deezer: false
+      yandexmusic: false
+      flowerytts: false
+      youtube: false     # usa lavasearch para búsquedas
+      vkmusic: false
+      tidal: false
+      qobuz: false
+      ytdlp: false
+      jiosaavn: false
+    lyrics-sources:
+      spotify: false
+      deezer: false
+      youtube: false
+      yandexmusic: false
+      vkmusic: false
+      lrcLib: false
+    spotify:
+      # clientId: ""
+      # clientSecret: ""
+      countryCode: "US"
+      playlistLoadLimit: 6
+      albumLoadLimit: 6
+      resolveArtistsInSearch: true
+      localFiles: false
+      preferAnonymousToken: false
+      # customTokenEndpoint: "http://localhost:8080/api/token"
+    applemusic:
+      countryCode: "US"
+      # mediaAPIToken: ""
+      # keyID: ""
+      # teamID: ""
+      # musicKitKey: |
+      #   -----BEGIN PRIVATE KEY-----
+      #   ...
+      #   -----END PRIVATE KEY-----
+      playlistLoadLimit: 6
+      albumLoadLimit: 6
+    deezer:
+      # arl: ""  # requerido para premium; dejar vacío desactiva playback premium
+      formats: [ "MP3_128" ]  # usa formatos libres por defecto
