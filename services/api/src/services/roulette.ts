@@ -18,6 +18,7 @@ import { acquireLock, redis, releaseLock } from '../lib/redis.js';
 import { getOwnedGames } from '../lib/steam.js';
 import { signActivityToken } from '../lib/jwt.js';
 import { sessionHub } from '../lib/session-hub.js';
+import { clearSessionClock, scheduleSessionClock } from './session-clock.js';
 
 const SESSION_CACHE_PREFIX = 'roulette:session:';
 const SESSION_CACHE_TTL_SECONDS = 60 * 60 * 4; // 4 hours
@@ -144,33 +145,58 @@ export async function createRouletteSession(payload: CreateSessionPayload) {
 
     await saveSessionCache(sessionCache);
 
-    const token = signActivityToken(sessionId, data.rules.guildId);
-
-    sessionHub.emit(sessionId, {
-      type: 'session.created',
-      payload: {
-        sessionId,
-        deadline: new Date(deadlineMs).toISOString(),
-        pool: Object.values(sessionCache.pool),
-        rules: {
-          guildId: data.rules.guildId,
-          textChannelId: data.rules.textChannelId,
-          voiceChannelId: data.rules.voiceChannelId,
-          maxProposals: data.rules.maxProposals,
-          timeSeconds: data.rules.timeSeconds,
-          ownershipMode: data.rules.ownershipMode,
-          poolMode: data.rules.poolMode,
-          minPlayers: data.rules.minPlayers,
-          ownershipThresholdPct: data.rules.ownershipThresholdPct,
-          baseWeight: data.rules.baseWeight,
-          voteWeightPct: data.rules.voteWeightPct,
-        },
-      },
+    const { token, exp } = signActivityToken({
+      sessionId,
+      guildId: data.rules.guildId,
+      textChannelId: data.rules.textChannelId,
+      voiceChannelId: data.rules.voiceChannelId,
+      userId: data.rules.createdBy,
     });
+
+    const snapshotPayload = {
+      sessionId,
+      deadline: new Date(deadlineMs).toISOString(),
+      serverTime: new Date().toISOString(),
+      ownerId: data.rules.createdBy,
+      pool: Object.values(sessionCache.pool),
+      rules: {
+        guildId: data.rules.guildId,
+        textChannelId: data.rules.textChannelId,
+        voiceChannelId: data.rules.voiceChannelId,
+        maxProposals: data.rules.maxProposals,
+        timeSeconds: data.rules.timeSeconds,
+        ownershipMode: data.rules.ownershipMode,
+        poolMode: data.rules.poolMode,
+        minPlayers: data.rules.minPlayers,
+        ownershipThresholdPct: data.rules.ownershipThresholdPct,
+        baseWeight: data.rules.baseWeight,
+        voteWeightPct: data.rules.voteWeightPct,
+      },
+    };
+
+    sessionHub.emit(sessionId, 'session.created', snapshotPayload);
+
+    scheduleSessionClock(
+      sessionId,
+      deadlineMs,
+      (remainingSeconds) => {
+        sessionHub.emit(sessionId, 'session.tick', {
+          sessionId,
+          remainingSeconds,
+          serverTime: new Date().toISOString(),
+        });
+      },
+      () => {
+        closeRouletteSession({ sessionId, requestedBy: data.rules.createdBy, action: 'close' }).catch((error) => {
+          console.error('Failed to auto-close roulette session', sessionId, error);
+        });
+      },
+    );
 
     return {
       sessionId,
       token,
+      expiresAt: exp ? new Date(exp * 1000).toISOString() : undefined,
       deadline: new Date(deadlineMs).toISOString(),
       pool: Object.values(sessionCache.pool),
     };
@@ -240,13 +266,10 @@ export async function submitVote(payload: RouletteVotePayload) {
 
   const remainingSeconds = Math.max(0, Math.ceil((cache.deadline - Date.now()) / 1000));
 
-  sessionHub.emit(data.sessionId, {
-    type: 'session.updated',
-    payload: {
-      sessionId: data.sessionId,
-      remainingSeconds,
-      votes: totalVotes[0]?.value ?? 0,
-    },
+  sessionHub.emit(data.sessionId, 'session.updated', {
+    sessionId: data.sessionId,
+    remainingSeconds,
+    votes: totalVotes[0]?.value ?? 0,
   });
 
   return { ok: true };
@@ -272,7 +295,11 @@ export async function closeRouletteSession(payload: RouletteClosePayload) {
   }
 
   if (session.state === 'closed') {
-    return rerollResult(data.sessionId);
+    const existing = await readStoredResult(data.sessionId);
+    if (existing) {
+      return existing;
+    }
+    throw new Error('Roulette session is already closed.');
   }
 
   const cache = await getSessionCache(data.sessionId);
@@ -326,6 +353,7 @@ export async function closeRouletteSession(payload: RouletteClosePayload) {
       });
   });
 
+  clearSessionClock(session.id);
   await releaseLock(getGuildLockKey(session.guildId));
   await deleteSessionCache(data.sessionId);
 
@@ -336,30 +364,19 @@ export async function closeRouletteSession(payload: RouletteClosePayload) {
     chosenAt: new Date().toISOString(),
   };
 
-  sessionHub.emit(data.sessionId, { type: 'session.closed', payload: result });
+  sessionHub.emit(data.sessionId, 'session.closed', result);
 
   return result;
 }
 
 async function rerollResult(sessionId: string) {
-  const existing = await db
-    .select({
-      sessionId: schema.rouletteResults.sessionId,
-      appId: schema.rouletteResults.appId,
-      weights: schema.rouletteResults.weights,
-      chosenAt: schema.rouletteResults.chosenAt,
-    })
-    .from(schema.rouletteResults)
-    .where(eq(schema.rouletteResults.sessionId, sessionId))
-    .limit(1);
-
-  const existingResult = existing[0];
+  const existingResult = await readStoredResult(sessionId);
 
   if (!existingResult) {
     throw new Error('No previous roulette result to reroll.');
   }
 
-  const weightsRecord = existingResult.weights as Record<string, number>;
+  const weightsRecord = existingResult.weights;
   const aliasTable = buildAliasTable(
     Object.entries(weightsRecord).map(([key, weight]) => ({ key, weight })),
   );
@@ -376,8 +393,33 @@ async function rerollResult(sessionId: string) {
     weights: weightsRecord,
     chosenAt: new Date().toISOString(),
   };
-  sessionHub.emit(sessionId, { type: 'session.closed', payload: result });
+  sessionHub.emit(sessionId, 'session.closed', result);
   return result;
+}
+
+async function readStoredResult(sessionId: string): Promise<RouletteResult | null> {
+  const rows = await db
+    .select({
+      sessionId: schema.rouletteResults.sessionId,
+      appId: schema.rouletteResults.appId,
+      weights: schema.rouletteResults.weights,
+      chosenAt: schema.rouletteResults.chosenAt,
+    })
+    .from(schema.rouletteResults)
+    .where(eq(schema.rouletteResults.sessionId, sessionId))
+    .limit(1);
+
+  const entry = rows[0];
+  if (!entry) {
+    return null;
+  }
+
+  return {
+    sessionId: entry.sessionId,
+    appId: entry.appId,
+    weights: entry.weights as Record<string, number>,
+    chosenAt: entry.chosenAt?.toISOString() ?? new Date().toISOString(),
+  };
 }
 
 function getGuildLockKey(guildId: string) {

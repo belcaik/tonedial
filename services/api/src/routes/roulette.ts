@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import {
   createSessionSchema,
   rouletteCloseSchema,
@@ -73,6 +73,8 @@ export async function registerRouletteRoutes(app: FastifyInstance) {
       const snapshot = rouletteSessionSnapshotSchema.parse({
         sessionId: cache.sessionId,
         deadline: new Date(cache.deadline).toISOString(),
+        serverTime: new Date().toISOString(),
+        ownerId: cache.rules.createdBy,
         pool: Object.values(cache.pool),
         rules: {
           guildId: cache.rules.guildId,
@@ -95,19 +97,19 @@ export async function registerRouletteRoutes(app: FastifyInstance) {
     }
   });
 
-  app.get('/session/:id/events', async (request, reply) => {
+  const streamHandler = async (request: FastifyRequest, reply: FastifyReply) => {
     const params = request.params as { id: string };
-    const token = (request.query as Record<string, string> | undefined)?.token;
+    const token = extractBearerToken(request.headers.authorization) ?? (request.query as { token?: string } | undefined)?.token;
     if (!token) {
       return reply.status(401).send({ error: 'Missing activity token' });
     }
 
     try {
       const claims = verifyActivityToken(token);
-      if (claims.sessionId !== params.id) {
+      if (claims.sid !== params.id) {
         return reply.status(403).send({ error: 'Token does not match session' });
       }
-      request.log.info({ sessionId: params.id, guildId: claims.guildId }, 'SSE connection established');
+      request.log.info({ sessionId: params.id, guildId: claims.gid }, 'SSE connection established');
     } catch (error) {
       return reply.status(401).send({ error: (error as Error).message });
     }
@@ -124,27 +126,27 @@ export async function registerRouletteRoutes(app: FastifyInstance) {
 
     const cache = await getSessionCache(params.id);
     if (cache) {
-      sessionHub.emit(params.id, {
-        type: 'session.created',
-        payload: {
-          sessionId: cache.sessionId,
-          deadline: new Date(cache.deadline).toISOString(),
-          pool: Object.values(cache.pool),
-          rules: {
-            guildId: cache.rules.guildId,
-            textChannelId: cache.rules.textChannelId,
-            voiceChannelId: cache.rules.voiceChannelId,
-            maxProposals: cache.rules.maxProposals,
-            timeSeconds: cache.rules.timeSeconds,
-            ownershipMode: cache.rules.ownershipMode,
-            poolMode: cache.rules.poolMode,
-            minPlayers: cache.rules.minPlayers,
-            ownershipThresholdPct: cache.rules.ownershipThresholdPct,
-            baseWeight: cache.rules.baseWeight,
-            voteWeightPct: cache.rules.voteWeightPct,
-          },
+      const snapshot = {
+        sessionId: cache.sessionId,
+        deadline: new Date(cache.deadline).toISOString(),
+        serverTime: new Date().toISOString(),
+        ownerId: cache.rules.createdBy,
+        pool: Object.values(cache.pool),
+        rules: {
+          guildId: cache.rules.guildId,
+          textChannelId: cache.rules.textChannelId,
+          voiceChannelId: cache.rules.voiceChannelId,
+          maxProposals: cache.rules.maxProposals,
+          timeSeconds: cache.rules.timeSeconds,
+          ownershipMode: cache.rules.ownershipMode,
+          poolMode: cache.rules.poolMode,
+          minPlayers: cache.rules.minPlayers,
+          ownershipThresholdPct: cache.rules.ownershipThresholdPct,
+          baseWeight: cache.rules.baseWeight,
+          voteWeightPct: cache.rules.voteWeightPct,
         },
-      });
+      };
+      reply.raw.write(`event: session.created\ndata: ${JSON.stringify(snapshot)}\n\n`);
     }
 
     request.raw.on('close', () => {
@@ -152,5 +154,19 @@ export async function registerRouletteRoutes(app: FastifyInstance) {
     });
 
     return reply.raw;
-  });
+  };
+
+  app.get('/session/:id/events', streamHandler);
+  app.get('/:id/stream', streamHandler);
+}
+
+function extractBearerToken(header?: string) {
+  if (!header) {
+    return null;
+  }
+  const [type, value] = header.split(' ');
+  if (!type || type.toLowerCase() !== 'bearer') {
+    return null;
+  }
+  return value || null;
 }

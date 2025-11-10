@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { db, schema } from '../db/client.js';
 import { ensureGamesMetadata } from '../lib/games.js';
@@ -7,14 +7,19 @@ import { getOwnedGames, verifySteamOpenId } from '../lib/steam.js';
 const steamCallbackQuery = z.object({ state: z.string().min(2) });
 
 export async function registerSteamRoutes(app: FastifyInstance) {
-  app.post('/auth/steam/callback', async (request, reply) => {
+  const steamCallbackHandler = async (request: FastifyRequest, reply: FastifyReply) => {
     const queryParse = steamCallbackQuery.safeParse(request.query);
     if (!queryParse.success) {
       return reply.status(400).send({ error: 'Missing or invalid state parameter.' });
     }
 
+    const payloadSource =
+      request.method === 'POST'
+        ? ((request.body ?? {}) as Record<string, string | string[]>)
+        : ((request.query ?? {}) as Record<string, string | string[]>);
+
     try {
-      const steamId64 = await verifySteamOpenId((request.body ?? {}) as Record<string, string | string[]>);
+      const steamId64 = await verifySteamOpenId(payloadSource);
       const owned = await getOwnedGames(steamId64, true);
 
       await db
@@ -43,7 +48,10 @@ export async function registerSteamRoutes(app: FastifyInstance) {
       request.log.error(error, 'Failed to process Steam callback');
       return reply.status(400).send({ error: (error as Error).message });
     }
-  });
+  };
+
+  app.post('/auth/steam/callback', steamCallbackHandler);
+  app.get('/auth/steam/callback', steamCallbackHandler);
 
   const ownedQuerySchema = z.object({ force: z.coerce.boolean().optional() });
 

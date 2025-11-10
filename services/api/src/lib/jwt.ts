@@ -4,11 +4,43 @@ import { env } from '../env.js';
 
 const DEFAULT_TTL_SECONDS = 10 * 60;
 
-export function signActivityToken(sessionId: string, guildId: string, ttlSeconds = DEFAULT_TTL_SECONDS) {
-  return jwt.sign({ sessionId, guildId }, env.API_JWT_SECRET, {
+export type ActivityTokenOptions = {
+  sessionId: string;
+  guildId: string;
+  textChannelId: string;
+  voiceChannelId: string;
+  userId?: string;
+  audience?: string;
+  issuer?: string;
+  ttlSeconds?: number;
+};
+
+export function signActivityToken(options: ActivityTokenOptions) {
+  const payload: Record<string, string> = {
+    sid: options.sessionId,
+    gid: options.guildId,
+    cid: options.textChannelId,
+    vcid: options.voiceChannelId,
+  };
+
+  if (options.userId) {
+    payload.sub = options.userId;
+  }
+  if (options.audience) {
+    payload.aud = options.audience;
+  }
+  if (options.issuer) {
+    payload.iss = options.issuer;
+  }
+
+  const token = jwt.sign(payload, env.API_JWT_SECRET, {
     algorithm: 'HS256',
-    expiresIn: ttlSeconds,
+    expiresIn: options.ttlSeconds ?? DEFAULT_TTL_SECONDS,
   });
+
+  const decoded = jwt.decode(token) as { exp?: number } | null;
+
+  return { token, exp: decoded?.exp ?? 0 };
 }
 
 export function verifyActivityToken(token: string): ActivityAuthClaims {

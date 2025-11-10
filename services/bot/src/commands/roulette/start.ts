@@ -12,13 +12,13 @@ import {
   ChannelType,
 } from 'discord.js';
 import type { OwnershipMode, PoolMode } from '@tonedial/shared';
-import { createRouletteSession } from '../../lib/api-client.js';
+import { createRouletteSession, requestActivityToken } from '../../lib/api-client.js';
 import { setActiveSession } from '../../lib/roulette-state.js';
 import { debugLog } from '../../lib/debug.js';
 
 const DEFAULT_BASE_WEIGHT = Number(process.env.ROULETTE_BASE_WEIGHT ?? 1);
 const DEFAULT_VOTE_WEIGHT = Number(process.env.ROULETTE_VOTE_WEIGHT ?? 0.25);
-const ACTIVITY_URL = process.env.ACTIVITY_URL ?? 'http://localhost:5173';
+const ACTIVITY_BASE_URL = process.env.PUBLIC_ORIGIN ?? process.env.ACTIVITY_URL ?? 'http://localhost:5173';
 
 const maxProposalsOption = new SlashCommandIntegerOption()
   .setName('max_proposals')
@@ -137,12 +137,24 @@ export async function handleStart(interaction: ChatInputCommandInteraction) {
 
   try {
     const session = await createRouletteSession(payload);
-    setActiveSession(guildId, session.sessionId);
-    debugLog('Roulette session created', session);
 
-    const activityUrl = new URL(ACTIVITY_URL);
-    activityUrl.searchParams.set('sessionId', session.sessionId);
-    activityUrl.searchParams.set('token', session.token);
+    let activityToken = session.token;
+    let expiresAt = session.expiresAt ?? null;
+
+    try {
+      const tokenResponse = await requestActivityToken(session.sessionId, interaction.user.id);
+      activityToken = tokenResponse.token;
+      expiresAt = tokenResponse.exp ? new Date(tokenResponse.exp * 1000).toISOString() : expiresAt;
+    } catch (tokenError) {
+      debugLog('Falling back to session token returned by /roulette/session', tokenError);
+    }
+
+    setActiveSession(guildId, session.sessionId, expiresAt ?? undefined);
+    debugLog('Roulette session created', { sessionId: session.sessionId, expiresAt });
+
+    const activityUrl = new URL(ACTIVITY_BASE_URL);
+    activityUrl.searchParams.set('sid', session.sessionId);
+    activityUrl.searchParams.set('token', activityToken);
 
     const embed = new EmbedBuilder()
       .setTitle('Roulette session started')
@@ -153,11 +165,13 @@ export async function handleStart(interaction: ChatInputCommandInteraction) {
         { name: 'Ownership', value: payload.rules.ownershipMode, inline: true },
       )
       .setColor(0x6c5ce7)
-      .setFooter({ text: `Session ID ${session.sessionId}` });
+      .setFooter({
+        text: expiresAt ? `Session ID ${session.sessionId} · token exp ${expiresAt}` : `Session ID ${session.sessionId}`,
+      });
 
     const button = new ButtonBuilder()
       .setStyle(ButtonStyle.Link)
-      .setLabel('Open Activity UI')
+      .setLabel('Abrir Activity (fallback web)')
       .setURL(activityUrl.toString());
 
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(button);

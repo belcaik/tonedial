@@ -1,6 +1,7 @@
 import type {
   CreateSessionPayload,
   RouletteClosePayload,
+  RouletteGameCandidate,
   RouletteResult,
   RouletteSessionSnapshot,
   RouletteVotePayload,
@@ -43,9 +44,22 @@ export function getSteamOwnedGames(steamId64: string, force = false) {
 }
 
 export function createRouletteSession(payload: CreateSessionPayload) {
-  return apiFetch<{ sessionId: string; token: string }>(`/roulette/session`, {
+  return apiFetch<{
+    sessionId: string;
+    token: string;
+    expiresAt?: string;
+    deadline: string;
+    pool: RouletteGameCandidate[];
+  }>(`/roulette/session`, {
     method: 'POST',
     body: JSON.stringify(payload),
+  });
+}
+
+export function requestActivityToken(sessionId: string, userId?: string) {
+  return apiFetch<{ token: string; exp?: number }>(`/activity/session-token`, {
+    method: 'POST',
+    body: JSON.stringify({ sessionId, userId }),
   });
 }
 

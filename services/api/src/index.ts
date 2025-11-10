@@ -6,6 +6,7 @@ import formbody from '@fastify/formbody';
 import { env } from './env.js';
 import { registerSteamRoutes } from './routes/steam.js';
 import { registerRouletteRoutes } from './routes/roulette.js';
+import { registerActivityRoutes } from './routes/activity.js';
 
 function resolveHttpsOptions() {
   if (!env.API_ENABLE_HTTPS) {
@@ -47,6 +48,7 @@ export async function buildServer() {
 
   await server.register(registerSteamRoutes);
   await server.register(registerRouletteRoutes, { prefix: '/roulette' });
+  await server.register(registerActivityRoutes);
 
   server.get('/health', async () => ({ status: 'ok', service: 'api' }));
   server.get('/docs', async () => ({

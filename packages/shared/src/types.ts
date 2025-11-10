@@ -101,24 +101,35 @@ export type RouletteResult = z.infer<typeof rouletteResultSchema>;
 export const rouletteSessionSnapshotSchema = z.object({
   sessionId: z.string(),
   deadline: z.string(),
+  serverTime: z.string(),
+  ownerId: z.string().optional(),
   pool: z.array(rouletteGameCandidateSchema),
   rules: rouletteRulesSchema.omit({ createdBy: true }),
 });
 export type RouletteSessionSnapshot = z.infer<typeof rouletteSessionSnapshotSchema>;
 
-export const sessionEventTypes = ['session.created', 'session.updated', 'session.closed'] as const satisfies Readonly<
-  [string, ...string[]]
->;
+export const sessionEventTypes = [
+  'session.created',
+  'session.updated',
+  'session.closed',
+  'session.tick',
+] as const satisfies Readonly<[string, ...string[]]>;
 export type SessionEventType = (typeof sessionEventTypes)[number];
 
 export type RouletteSessionEvent =
   | { type: 'session.created'; payload: RouletteSessionSnapshot }
   | { type: 'session.updated'; payload: { sessionId: string; remainingSeconds: number; votes: number } }
-  | { type: 'session.closed'; payload: RouletteResult };
+  | { type: 'session.closed'; payload: RouletteResult }
+  | { type: 'session.tick'; payload: { sessionId: string; remainingSeconds: number; serverTime: string } };
 
 export const activityAuthSchema = z.object({
-  sessionId: z.string(),
-  guildId: z.string(),
+  sid: z.string(),
+  gid: z.string(),
+  cid: z.string(),
+  vcid: z.string(),
+  sub: z.string().optional(),
+  aud: z.string().optional(),
+  iss: z.string().optional(),
   exp: z.number(),
 });
 export type ActivityAuthClaims = z.infer<typeof activityAuthSchema>;

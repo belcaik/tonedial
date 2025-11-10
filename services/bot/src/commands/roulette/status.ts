@@ -5,7 +5,7 @@ import {
   type ChatInputCommandInteraction,
 } from 'discord.js';
 import { fetchRouletteSession } from '../../lib/api-client.js';
-import { clearActiveSession, getActiveSession } from '../../lib/roulette-state.js';
+import { clearActiveSession, getActiveSession, getActiveSessionMeta } from '../../lib/roulette-state.js';
 import { debugLog } from '../../lib/debug.js';
 
 const sessionOption = new SlashCommandStringOption()
@@ -45,6 +45,11 @@ export async function handleStatus(interaction: ChatInputCommandInteraction) {
         { name: 'Max proposals', value: `${snapshot.rules.maxProposals}`, inline: true },
       )
       .setColor(0x00cec9);
+
+    const meta = getActiveSessionMeta(guildId);
+    if (meta?.expiresAt) {
+      embed.addFields({ name: 'Activity token', value: `expires ${new Date(meta.expiresAt).toLocaleTimeString()}` });
+    }
 
     await interaction.reply({ embeds: [embed], ephemeral: true });
   } catch (error) {

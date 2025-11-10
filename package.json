@@ -7,7 +7,7 @@
     "dev:all": "docker compose up --build",
     "migrate": "pnpm --filter @tonedial/api migrate",
     "seed": "node scripts/seed-placeholder.mjs",
-    "test": "node --test packages/shared/tests/**/*.test.ts"
+    "test": "tsx --test packages/shared/tests/**/*.test.ts && tsx --test services/api/src/services/__tests__/**/*.test.ts"
   },
   "keywords": [],
   "author": "",

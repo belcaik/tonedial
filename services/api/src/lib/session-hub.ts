@@ -1,5 +1,5 @@
 import type { FastifyReply } from 'fastify';
-import type { RouletteSessionEvent } from '@tonedial/shared';
+import type { SessionEventType } from '@tonedial/shared';
 
 class SessionHub {
   private listeners = new Map<string, Set<FastifyReply>>();
@@ -17,15 +17,15 @@ class SessionHub {
     });
   }
 
-  emit(sessionId: string, event: RouletteSessionEvent) {
+  emit(sessionId: string, type: SessionEventType, payload: unknown) {
     const listeners = this.listeners.get(sessionId);
     if (!listeners || !listeners.size) {
       return;
     }
 
-    const payload = `data: ${JSON.stringify(event)}\n\n`;
+    const frame = `event: ${type}\ndata: ${JSON.stringify(payload)}\n\n`;
     for (const reply of listeners) {
-      reply.raw.write(payload);
+      reply.raw.write(frame);
     }
   }
 }
