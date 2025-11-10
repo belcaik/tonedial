@@ -85,3 +85,6 @@ services/activity/.tsbuild/
 .env
 .env.local
 .env.*.local
+
+
+*/certs/*
