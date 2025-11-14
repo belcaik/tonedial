@@ -5,19 +5,63 @@ import type {
   RouletteResult,
   RouletteSessionSnapshot,
   RouletteVotePayload,
+  SteamLinkStatus,
   SteamOwnedResponse,
 } from '@tonedial/shared';
 
-const API_BASE_URL = process.env.API_BASE_URL ?? 'http://api:8080';
+const API_BASE_URL = deriveApiBaseUrl();
+
+function deriveApiBaseUrl() {
+  const internalHost = process.env.API_INTERNAL_HOST ?? 'api';
+  const internalPort = process.env.API_PORT ?? '8080';
+  const internalDefault = `http://${internalHost}:${internalPort}`;
+
+  const candidates = [
+    process.env.API_BASE_URL,
+    process.env.API_INTERNAL_URL,
+    internalDefault,
+    process.env.API_ORIGIN,
+    process.env.API_PUBLIC_BASE_URL,
+    process.env.API_PUBLIC_URL,
+    process.env.PUBLIC_API_URL,
+    process.env.PUBLIC_ORIGIN,
+    (() => {
+      const raw = process.env.STEAM_RETURN_URL;
+      if (!raw) {
+        return null;
+      }
+      try {
+        return new URL(raw).origin;
+      } catch {
+        return null;
+      }
+    })(),
+    internalDefault,
+  ];
+
+  for (const candidate of candidates) {
+    if (candidate && candidate.trim()) {
+      return candidate.replace(/\/$/, '');
+    }
+  }
+  return internalDefault;
+}
 
 async function apiFetch<T>(path: string, init?: RequestInit) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
-    headers: {
-      'content-type': 'application/json',
-      ...(init?.headers ?? {}),
-    },
-  });
+  let response: Response;
+  const url = `${API_BASE_URL}${path}`;
+  try {
+    response = await fetch(url, {
+      ...init,
+      headers: {
+        'content-type': 'application/json',
+        ...(init?.headers ?? {}),
+      },
+    });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to reach API at ${url}: ${reason}`);
+  }
 
   if (!response.ok) {
     let errorMessage = `API request failed (${response.status})`;
@@ -41,6 +85,10 @@ async function apiFetch<T>(path: string, init?: RequestInit) {
 export function getSteamOwnedGames(steamId64: string, force = false) {
   const suffix = force ? '?force=true' : '';
   return apiFetch<SteamOwnedResponse>(`/steam/owned/${steamId64}${suffix}`);
+}
+
+export function getSteamLinkStatus(userId: string) {
+  return apiFetch<SteamLinkStatus>(`/steam/link/${userId}`);
 }
 
 export function createRouletteSession(payload: CreateSessionPayload) {

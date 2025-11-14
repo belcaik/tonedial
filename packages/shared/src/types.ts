@@ -69,6 +69,23 @@ export const steamOwnedResponseSchema = z.object({
 });
 export type SteamOwnedResponse = z.infer<typeof steamOwnedResponseSchema>;
 
+export const steamLinkStatusSchema = z.discriminatedUnion('linked', [
+  z.object({
+    linked: z.literal(false),
+    userId: z.string(),
+  }),
+  z.object({
+    linked: z.literal(true),
+    userId: z.string(),
+    steamId64: z.string(),
+    visibilityOk: z.boolean(),
+    linkedAt: z.string().optional(),
+    totalGames: z.number().int().nonnegative().optional(),
+    cacheRefreshedAt: z.string().optional(),
+  }),
+]);
+export type SteamLinkStatus = z.infer<typeof steamLinkStatusSchema>;
+
 export const gameMetadataSchema = z.object({
   appId: z.number().int().positive(),
   name: z.string(),

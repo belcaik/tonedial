@@ -4,6 +4,7 @@ import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import formbody from '@fastify/formbody';
 import { env } from './env.js';
+import { ensureBaseSchema } from './db/bootstrap.js';
 import { registerSteamRoutes } from './routes/steam.js';
 import { registerRouletteRoutes } from './routes/roulette.js';
 import { registerActivityRoutes } from './routes/activity.js';
@@ -33,6 +34,8 @@ export async function buildServer() {
   }
 
   const server = Fastify(serverOptions);
+
+  await ensureBaseSchema();
 
   await server.register(cors, {
     origin: true,
