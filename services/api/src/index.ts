@@ -27,7 +27,7 @@ function resolveHttpsOptions() {
 
 export async function buildServer() {
   const httpsOptions = resolveHttpsOptions();
-  const logger = { level: env.NODE_ENV === 'production' ? 'info' : 'debug' };
+  const logger = { level: env.API_LOG_LEVEL };
   const serverOptions: FastifyServerOptions = { logger };
   if (httpsOptions) {
     (serverOptions as FastifyServerOptions & { https: typeof httpsOptions }).https = httpsOptions;

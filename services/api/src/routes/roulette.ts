@@ -17,6 +17,7 @@ export async function registerRouletteRoutes(app: FastifyInstance) {
     }
 
     try {
+      request.log.debug({ payload: parseResult.data }, 'Validated roulette session payload');
       request.log.info({
         guildId: parseResult.data.rules.guildId,
         participants: parseResult.data.participants.length,
@@ -32,17 +33,18 @@ export async function registerRouletteRoutes(app: FastifyInstance) {
   });
 
   app.post('/vote', async (request, reply) => {
-    const parseResult = rouletteVoteSchema.safeParse(request.body);
-    if (!parseResult.success) {
-      return reply.status(400).send({ error: 'Invalid vote payload' });
-    }
+      const parseResult = rouletteVoteSchema.safeParse(request.body);
+      if (!parseResult.success) {
+        return reply.status(400).send({ error: 'Invalid vote payload' });
+      }
 
-    try {
-      request.log.debug(parseResult.data, 'Processing roulette vote');
-      const outcome = await submitVote(parseResult.data);
-      return reply.send(outcome);
-    } catch (error) {
-      request.log.warn(error, 'Vote rejected');
+      try {
+        request.log.debug(parseResult.data, 'Vote payload accepted');
+        request.log.debug(parseResult.data, 'Processing roulette vote');
+        const outcome = await submitVote(parseResult.data);
+        return reply.send(outcome);
+      } catch (error) {
+        request.log.warn(error, 'Vote rejected');
       return reply.status(400).send({ error: (error as Error).message });
     }
   });

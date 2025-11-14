@@ -8,6 +8,7 @@ import type {
   SteamLinkStatus,
   SteamOwnedResponse,
 } from '@tonedial/shared';
+import { debugLog } from './debug.js';
 
 const API_BASE_URL = deriveApiBaseUrl();
 
@@ -50,6 +51,7 @@ function deriveApiBaseUrl() {
 async function apiFetch<T>(path: string, init?: RequestInit) {
   let response: Response;
   const url = `${API_BASE_URL}${path}`;
+  debugLog('API request', { url, method: init?.method ?? 'GET' });
   try {
     response = await fetch(url, {
       ...init,
@@ -60,10 +62,12 @@ async function apiFetch<T>(path: string, init?: RequestInit) {
     });
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
+    debugLog('API request failed before response', { url, reason });
     throw new Error(`Failed to reach API at ${url}: ${reason}`);
   }
 
   if (!response.ok) {
+    debugLog('API request returned non-OK', { url, status: response.status });
     let errorMessage = `API request failed (${response.status})`;
     try {
       const data = (await response.json()) as { error?: string };
@@ -79,7 +83,9 @@ async function apiFetch<T>(path: string, init?: RequestInit) {
     throw new Error(errorMessage);
   }
 
-  return (await response.json()) as T;
+  const json = (await response.json()) as T;
+  debugLog('API request succeeded', { url });
+  return json;
 }
 
 export function getSteamOwnedGames(steamId64: string, force = false) {

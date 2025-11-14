@@ -18,6 +18,7 @@ const envSchema = z
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     API_PORT: z.coerce.number().default(8080),
     API_JWT_SECRET: z.string().min(16, 'API_JWT_SECRET must be at least 16 characters'),
+    API_LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('debug'),
     API_ENABLE_HTTPS: booleanFromEnv.default(false),
     API_TLS_CERT_PATH: z.string().optional(),
     API_TLS_KEY_PATH: z.string().optional(),

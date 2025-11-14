@@ -1,4 +1,6 @@
-const DEBUG_ENABLED = /^true$/i.test(process.env.ROULETTE_DEBUG ?? '');
+const DEBUG_ENABLED = /^false$/i.test(process.env.ROULETTE_DEBUG ?? '')
+  ? false
+  : true;
 
 export function debugLog(label: string, payload?: unknown) {
   if (!DEBUG_ENABLED) {
