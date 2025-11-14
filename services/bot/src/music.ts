@@ -31,9 +31,12 @@ type PlayResult =
       position: number;
     };
 
-type PlayerEventName = Parameters<Player<Node>['on']>[0];
-type PlayerEventListener = Parameters<Player<Node>['on']>[1];
-const PLAYER_EVENT_NAME = 'event' as PlayerEventName;
+type PlayerEventListener = (...args: any[]) => Promise<void> | void;
+type LifecycleEventName = 'trackEnd' | 'trackException' | 'trackStuck';
+type PlayerListenerRegistration = {
+  event: LifecycleEventName;
+  listener: PlayerEventListener;
+};
 
 export class MusicManager {
   private readonly node: Node;
@@ -44,7 +47,7 @@ export class MusicManager {
   private currentSessionId: string | null = null;
   private readonly queues = new Map<string, QueueEntry[]>();
   private readonly nowPlaying = new Map<string, QueueEntry>();
-  private readonly playerListeners = new Map<string, PlayerEventListener>();
+  private readonly playerListeners = new Map<string, PlayerListenerRegistration[]>();
 
   constructor(private readonly client: Client) {
     const host = process.env.LAVALINK_HOST ?? DEFAULT_LAVALINK_HOST;
@@ -376,47 +379,52 @@ export class MusicManager {
       return;
     }
 
-    const onEvent: PlayerEventListener = (event: unknown) => {
-      void this.handlePlayerEvent(guildId, event);
+    const onTrackEnd: PlayerEventListener = async (event: unknown) => {
+      const reason =
+        typeof event === 'object' && event && 'reason' in event
+          ? ((event as { reason?: string | null }).reason ?? null)
+          : null;
+
+      if (reason === 'REPLACED') {
+        return;
+      }
+
+      if (reason === 'STOPPED' && !this.nowPlaying.has(guildId)) {
+        return;
+      }
+
+      this.nowPlaying.delete(guildId);
+      await this.playNextFromQueue(guildId);
     };
 
-    player.on(PLAYER_EVENT_NAME, onEvent as never);
-    this.playerListeners.set(guildId, onEvent);
+    const onTrackFailure: PlayerEventListener = async () => {
+      this.nowPlaying.delete(guildId);
+      await this.playNextFromQueue(guildId);
+    };
+
+    const registrations: PlayerListenerRegistration[] = [
+      { event: 'trackEnd', listener: onTrackEnd },
+      { event: 'trackException', listener: onTrackFailure },
+      { event: 'trackStuck', listener: onTrackFailure },
+    ];
+
+    for (const { event, listener } of registrations) {
+      player.on(event as never, listener as never);
+    }
+
+    this.playerListeners.set(guildId, registrations);
   }
 
   private detachPlayerListener(guildId: string, player: Player<Node>) {
-    const listener = this.playerListeners.get(guildId);
-    if (!listener) {
+    const registrations = this.playerListeners.get(guildId);
+    if (!registrations) {
       return;
     }
 
     this.playerListeners.delete(guildId);
 
-    player.off?.(PLAYER_EVENT_NAME, listener as never);
-  }
-
-  private async handlePlayerEvent(guildId: string, event: unknown) {
-    if (!event || typeof event !== 'object') {
-      return;
-    }
-
-    const payload = event as { type?: string; reason?: string | null };
-
-    if (payload.type === 'TrackEndEvent') {
-      if (payload.reason === 'REPLACED') {
-        return;
-      }
-      if (payload.reason === 'STOPPED' && !this.nowPlaying.has(guildId)) {
-        return;
-      }
-      this.nowPlaying.delete(guildId);
-      await this.playNextFromQueue(guildId);
-      return;
-    }
-
-    if (payload.type === 'TrackExceptionEvent' || payload.type === 'TrackStuckEvent') {
-      this.nowPlaying.delete(guildId);
-      await this.playNextFromQueue(guildId);
+    for (const { event, listener } of registrations) {
+      player.off?.(event as never, listener as never);
     }
   }
 
