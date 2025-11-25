@@ -28,7 +28,8 @@ export async function initDiscord() {
 
   await ensureSdkLoaded();
   const DiscordSDKConstructor = (window as typeof window & { DiscordSDK?: new (id: string) => DiscordClient }).DiscordSDK;
-  const clientId = import.meta.env.VITE_DISCORD_CLIENT_ID;
+  const params = new URLSearchParams(window.location.search);
+  const clientId = params.get('cid') ?? import.meta.env.VITE_DISCORD_CLIENT_ID;
 
   if (!DiscordSDKConstructor || !clientId) {
     throw new Error('Discord Embedded App SDK unavailable or missing VITE_DISCORD_CLIENT_ID.');

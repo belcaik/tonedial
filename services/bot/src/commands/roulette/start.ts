@@ -18,7 +18,19 @@ import { debugLog } from '../../lib/debug.js';
 
 const DEFAULT_BASE_WEIGHT = Number(process.env.ROULETTE_BASE_WEIGHT ?? 1);
 const DEFAULT_VOTE_WEIGHT = Number(process.env.ROULETTE_VOTE_WEIGHT ?? 0.25);
-const ACTIVITY_BASE_URL = process.env.PUBLIC_ORIGIN ?? process.env.ACTIVITY_URL ?? 'http://localhost:5173';
+const ACTIVITY_BASE_URL =
+  process.env.ACTIVITY_PUBLIC_URL ??
+  process.env.ACTIVITY_URL ??
+  process.env.PUBLIC_ORIGIN ??
+  'http://localhost:5173';
+const ACTIVITY_API_BASE =
+  process.env.API_PUBLIC_BASE_URL ??
+  process.env.API_PUBLIC_URL ??
+  process.env.PUBLIC_API_URL ??
+  process.env.API_ORIGIN ??
+  process.env.PUBLIC_ORIGIN ??
+  'http://localhost:8080';
+const DISCORD_APP_ID = process.env.DISCORD_APP_ID ?? process.env.VITE_DISCORD_CLIENT_ID;
 
 const maxProposalsOption = new SlashCommandIntegerOption()
   .setName('max_proposals')
@@ -155,6 +167,10 @@ export async function handleStart(interaction: ChatInputCommandInteraction) {
     const activityUrl = new URL(ACTIVITY_BASE_URL);
     activityUrl.searchParams.set('sid', session.sessionId);
     activityUrl.searchParams.set('token', activityToken);
+    activityUrl.searchParams.set('api', ACTIVITY_API_BASE);
+    if (DISCORD_APP_ID) {
+      activityUrl.searchParams.set('cid', DISCORD_APP_ID);
+    }
 
     const embed = new EmbedBuilder()
       .setTitle('Roulette session started')

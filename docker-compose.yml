@@ -43,12 +43,16 @@ services:
     volumes:
       - ./infra/certs/api-syncave-app.crt:/app/certs/api-syncave-app.crt:ro
       - ./infra/certs/api-syncave-app.key:/app/certs/api-syncave-app.key:ro
+    networks:
+      default:
+        aliases:
+          - api.syncave.app
     healthcheck:
       test:
         - CMD
         - node
         - -e
-        - "fetch('http://localhost:8080/health').then(r=>{if(!r.ok) process.exit(1);}).catch(()=>process.exit(1));"
+        - "fetch('https://api.syncave.app:8080/health').then(r=>{if(!r.ok) process.exit(1);}).catch(()=>process.exit(1));"
       interval: 10s
       timeout: 3s
       retries: 5
@@ -73,7 +77,7 @@ services:
     depends_on:
       - api
     ports:
-      - '5173:80'
+      - '5173:443'
     healthcheck:
       test:
         - CMD
@@ -83,6 +87,13 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+    volumes:
+      - ./infra/certs/activity-syncave-app.crt:/etc/nginx/certs/activity-syncave-app.crt:ro
+      - ./infra/certs/activity-syncave-app.key:/etc/nginx/certs/activity-syncave-app.key:ro
+    networks:
+      default:
+        aliases:
+          - activity.syncave.app
 
 volumes:
   pg:

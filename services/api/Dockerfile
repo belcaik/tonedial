@@ -20,6 +20,12 @@ RUN pnpm deploy --filter @tonedial/api --prod /app/out
 FROM node:22-bookworm-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+COPY infra/certs/mkcert-root/rootCA.pem /usr/local/share/ca-certificates/tonedial-root.crt
+RUN update-ca-certificates
+ENV NODE_EXTRA_CA_CERTS=/usr/local/share/ca-certificates/tonedial-root.crt
 COPY --from=build /app/out ./
 EXPOSE 8080
 CMD ["node", "dist/index.js"]

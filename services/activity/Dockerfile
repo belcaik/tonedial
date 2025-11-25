@@ -17,6 +17,10 @@ RUN pnpm --filter @tonedial/shared build
 RUN pnpm --filter @tonedial/activity build
 
 FROM nginx:1.27-alpine AS runner
+RUN apk add --no-cache ca-certificates
+COPY infra/certs/mkcert-root/rootCA.pem /usr/local/share/ca-certificates/tonedial-root.crt
+RUN update-ca-certificates
 COPY --from=build /app/services/activity/dist /usr/share/nginx/html
-EXPOSE 80
+COPY services/activity/nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80 443
 CMD ["nginx", "-g", "daemon off;"]

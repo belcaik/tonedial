@@ -7,6 +7,11 @@ import './styles.css';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080';
 
+type EnrichedSnapshot = RouletteSessionSnapshot & {
+  serverTime: string;
+  ownerId?: string;
+};
+
 type AppProps = {
   discord?: { sdk: DiscordClient; ctx: DiscordContext };
   fallbackError?: string;
@@ -28,7 +33,7 @@ export default function App({ discord, fallbackError }: AppProps) {
 
   const [sessionId] = useState(initialSessionId);
   const [token, setToken] = useState<string | null>(urlToken);
-  const [snapshot, setSnapshot] = useState<RouletteSessionSnapshot | null>(null);
+  const [snapshot, setSnapshot] = useState<EnrichedSnapshot | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [winner, setWinner] = useState<RouletteResult | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -96,7 +101,7 @@ export default function App({ discord, fallbackError }: AppProps) {
     let cancelled = false;
     (async () => {
       try {
-        const data = await fetchSessionSnapshot(sessionId, token);
+        const data = (await fetchSessionSnapshot(sessionId, token)) as EnrichedSnapshot;
         if (cancelled) {
           return;
         }
@@ -138,7 +143,7 @@ export default function App({ discord, fallbackError }: AppProps) {
     eventSourceRef.current = source;
 
     source.addEventListener('session.created', (event) => {
-      const payload = JSON.parse((event as MessageEvent<string>).data) as RouletteSessionSnapshot;
+      const payload = JSON.parse((event as MessageEvent<string>).data) as EnrichedSnapshot;
       setSnapshot(payload);
       setWinner(null);
       syncDeadline(payload.deadline, payload.serverTime);

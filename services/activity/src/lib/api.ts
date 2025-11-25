@@ -1,6 +1,8 @@
 import type { RouletteResult, RouletteSessionSnapshot } from '@tonedial/shared';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080';
+const urlParams = new URLSearchParams(window.location.search);
+const API_BASE_URL =
+  urlParams.get('api') ?? import.meta.env.VITE_API_BASE_URL ?? `${window.location.origin.replace(/:\\d+$/, ':8080')}`;
 
 async function authedFetch<T>(path: string, token: string, init?: RequestInit) {
   const response = await fetch(`${API_BASE_URL}${path}`, {

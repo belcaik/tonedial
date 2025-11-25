@@ -7,6 +7,7 @@ const OWNED_CACHE_PREFIX = 'cache:steam:owned:';
 const STEAM_OPENID_ENDPOINT = 'https://steamcommunity.com/openid/login';
 const STEAM_API_HOST = 'https://api.steampowered.com';
 const STEAM_STORE_API = 'https://store.steampowered.com/api/appdetails';
+const METADATA_BATCH_SIZE = 20;
 
 export type OpenIdPayload = Record<string, string | string[]>;
 
@@ -138,33 +139,59 @@ const MULTIPLAYER_TAGS = new Set([
 ]);
 
 export async function fetchGameMetadata(appId: number): Promise<GameMetadata> {
+  const result = await fetchGameMetadataBatch([appId]);
+  const entry = result.get(appId);
+  if (!entry) {
+    throw new SteamMetadataError(`Steam app ${appId} not found`, 404);
+  }
+  return entry;
+}
+
+export async function fetchGameMetadataBatch(appIds: number[]): Promise<Map<number, GameMetadata | null>> {
+  const map = new Map<number, GameMetadata | null>();
+  if (!appIds.length) {
+    return map;
+  }
+
   const url = new URL(STEAM_STORE_API);
-  url.searchParams.set('appids', String(appId));
+  url.searchParams.set('appids', appIds.join(','));
   url.searchParams.set('filters', 'basic,categories,genres');
 
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(`Steam appdetails failed with status ${response.status}`);
+    throw new SteamMetadataError(`Steam appdetails failed with status ${response.status}`, response.status);
   }
 
   const json = (await response.json()) as Record<string, { success: boolean; data?: any }>;
-  const entry = json[String(appId)];
-  if (!entry?.success || !entry.data) {
-    throw new Error(`Steam app ${appId} not found`);
+
+  for (const appId of appIds) {
+    const entry = json[String(appId)];
+    if (!entry?.success || !entry.data) {
+      map.set(appId, null);
+      continue;
+    }
+
+    const categories = Array.isArray(entry.data.categories)
+      ? entry.data.categories.map((cat: { description: string }) => cat.description)
+      : [];
+
+    const isMultiplayer = categories.some((category: string) => MULTIPLAYER_TAGS.has(category));
+
+    map.set(appId, {
+      appId,
+      name: entry.data.name,
+      categories,
+      isMultiplayer,
+      maxPlayers: undefined,
+      updatedAt: new Date().toISOString(),
+    });
   }
 
-  const categories = Array.isArray(entry.data.categories)
-    ? entry.data.categories.map((cat: { description: string }) => cat.description)
-    : [];
-
-  const isMultiplayer = categories.some((category: string) => MULTIPLAYER_TAGS.has(category));
-
-  return {
-    appId,
-    name: entry.data.name,
-    categories,
-    isMultiplayer,
-    maxPlayers: undefined,
-    updatedAt: new Date().toISOString(),
-  };
+  return map;
+}
+export class SteamMetadataError extends Error {
+  constructor(message: string, readonly status?: number) {
+    super(message);
+    this.name = 'SteamMetadataError';
+  }
 }
