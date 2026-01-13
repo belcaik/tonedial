@@ -150,3 +150,77 @@ export const activityAuthSchema = z.object({
   exp: z.number(),
 });
 export type ActivityAuthClaims = z.infer<typeof activityAuthSchema>;
+
+// ============================================================
+// Music Radio Types
+// ============================================================
+
+export const audioFeaturesSchema = z.object({
+  tempo: z.number().optional(), // BPM
+  energy: z.number().min(0).max(1).optional(),
+  danceability: z.number().min(0).max(1).optional(),
+  valence: z.number().min(0).max(1).optional(), // mood: sad to happy
+  loudness: z.number().optional(), // dB
+  speechiness: z.number().min(0).max(1).optional(),
+  acousticness: z.number().min(0).max(1).optional(),
+  instrumentalness: z.number().min(0).max(1).optional(),
+  liveness: z.number().min(0).max(1).optional(),
+  genres: z.array(z.string()).default([]),
+  tags: z.array(z.string()).default([]),
+  provider: z.enum(['spotify', 'lastfm', 'acoustid', 'essentia', 'estimated']).optional(),
+  providerId: z.string().optional(),
+});
+export type AudioFeatures = z.infer<typeof audioFeaturesSchema>;
+
+export const trackInfoSchema = z.object({
+  id: z.string(), // unique track identifier (hash of uri + source)
+  title: z.string(),
+  author: z.string().optional(),
+  duration: z.number().int().positive().optional(), // milliseconds
+  uri: z.string().optional(),
+  source: z.enum(['youtube', 'soundcloud', 'bandcamp', 'http', 'spotify']),
+  audioFeatures: audioFeaturesSchema.optional(),
+});
+export type TrackInfo = z.infer<typeof trackInfoSchema>;
+
+export const radioAlgorithms = ['similarity', 'genre', 'mixed'] as const;
+export type RadioAlgorithm = (typeof radioAlgorithms)[number];
+
+export const radioSettingsSchema = z.object({
+  enabled: z.boolean().default(false),
+  algorithm: z.enum(radioAlgorithms).default('similarity'),
+  similarityThreshold: z.number().min(0).max(1).default(0.7),
+  genreDiversity: z.number().min(0).max(1).default(0.3),
+  tempoVariance: z.number().int().positive().default(20), // BPM
+  energyVariance: z.number().min(0).max(1).default(0.2),
+  historyLookbackHours: z.number().int().positive().default(24),
+  minQueueSize: z.number().int().positive().default(3),
+  maxQueueSize: z.number().int().positive().default(10),
+  avoidRepeatHours: z.number().int().positive().default(2),
+});
+export type RadioSettings = z.infer<typeof radioSettingsSchema>;
+
+export const trackSimilaritySchema = z.object({
+  trackAId: z.string(),
+  trackBId: z.string(),
+  score: z.number().min(0).max(1),
+  featuresMatched: z.record(z.string(), z.number()).optional(),
+});
+export type TrackSimilarity = z.infer<typeof trackSimilaritySchema>;
+
+export const playbackHistoryEntrySchema = z.object({
+  id: z.string().uuid(),
+  guildId: z.string(),
+  trackId: z.string(),
+  trackTitle: z.string(),
+  trackAuthor: z.string().optional(),
+  trackDuration: z.number().int().optional(),
+  trackUri: z.string().optional(),
+  trackSource: z.string().optional(),
+  requestedBy: z.string(), // user_id or 'radio'
+  playedAt: z.string(), // ISO timestamp
+  completionRate: z.number().min(0).max(1).optional(),
+  skipped: z.boolean().default(false),
+  skipReason: z.enum(['user', 'error', 'stuck']).optional(),
+});
+export type PlaybackHistoryEntry = z.infer<typeof playbackHistoryEntrySchema>;

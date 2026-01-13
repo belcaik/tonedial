@@ -5,9 +5,12 @@ import rateLimit from '@fastify/rate-limit';
 import formbody from '@fastify/formbody';
 import { env } from './env.js';
 import { ensureBaseSchema } from './db/bootstrap.js';
+import { db } from './db/client.js';
 import { registerSteamRoutes } from './routes/steam.js';
 import { registerRouletteRoutes } from './routes/roulette.js';
 import { registerActivityRoutes } from './routes/activity.js';
+import { radioRoutes } from './routes/radio.js';
+import { initializeRadioServices, cleanupServices } from './services/index.js';
 
 function resolveHttpsOptions() {
   if (!env.API_ENABLE_HTTPS) {
@@ -37,6 +40,9 @@ export async function buildServer() {
 
   await ensureBaseSchema();
 
+  // Initialize radio services
+  const radioServices = initializeRadioServices(db);
+
   await server.register(cors, {
     origin: true,
     credentials: true,
@@ -53,6 +59,9 @@ export async function buildServer() {
   await server.register(registerRouletteRoutes, { prefix: '/roulette' });
   await server.register(registerActivityRoutes);
 
+  // Register radio routes
+  await server.register(radioRoutes, radioServices);
+
   server.get('/health', async () => ({ status: 'ok', service: 'api' }));
   server.get('/docs', async () => ({
     name: 'ToneDial API',
@@ -66,8 +75,19 @@ export async function buildServer() {
       { method: 'POST', path: '/roulette/close', description: 'Close or reroll roulette session' },
       { method: 'GET', path: '/roulette/session/:id', description: 'Fetch roulette snapshot' },
       { method: 'GET', path: '/roulette/session/:id/events', description: 'SSE stream for Activity UI' },
+      { method: 'GET', path: '/radio/settings/:guildId', description: 'Get radio settings' },
+      { method: 'POST', path: '/radio/settings/:guildId', description: 'Update radio settings' },
+      { method: 'POST', path: '/radio/start/:guildId', description: 'Start radio' },
+      { method: 'POST', path: '/radio/stop/:guildId', description: 'Stop radio' },
+      { method: 'GET', path: '/radio/queue/:guildId', description: 'Get radio queue' },
+      { method: 'POST', path: '/radio/recommendations/:guildId', description: 'Generate recommendations' },
     ],
   }));
+
+  // Cleanup on shutdown
+  server.addHook('onClose', async () => {
+    await cleanupServices();
+  });
 
   return server;
 }

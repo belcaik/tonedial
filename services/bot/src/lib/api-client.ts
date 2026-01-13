@@ -134,3 +134,131 @@ export function closeRoulette(payload: RouletteClosePayload) {
 export function fetchRouletteSession(sessionId: string) {
   return apiFetch<RouletteSessionSnapshot>(`/roulette/session/${sessionId}`);
 }
+
+// ============================================================
+// Radio API Functions
+// ============================================================
+
+export interface RadioSettings {
+  enabled: boolean;
+  algorithm: 'similarity' | 'genre' | 'mixed';
+  similarityThreshold: number;
+  genreDiversity: number;
+  tempoVariance: number;
+  energyVariance: number;
+  historyLookbackHours: number;
+  minQueueSize: number;
+  maxQueueSize: number;
+  avoidRepeatHours: number;
+}
+
+export interface TrackInfo {
+  id: string;
+  title: string;
+  author?: string;
+  duration?: number;
+  uri?: string;
+  source: 'youtube' | 'soundcloud' | 'bandcamp' | 'http' | 'spotify';
+}
+
+export interface PlaybackEvent {
+  trackId: string;
+  trackTitle: string;
+  trackAuthor?: string;
+  trackDuration?: number;
+  trackUri?: string;
+  trackSource: 'youtube' | 'soundcloud' | 'bandcamp' | 'http' | 'spotify';
+  requestedBy: string;
+  completionRate?: number;
+  skipped?: boolean;
+  skipReason?: 'user' | 'error' | 'stuck';
+}
+
+/**
+ * Get radio settings for a guild
+ */
+export function getRadioSettings(guildId: string) {
+  return apiFetch<{ settings: RadioSettings }>(`/radio/settings/${guildId}`);
+}
+
+/**
+ * Update radio settings for a guild
+ */
+export function updateRadioSettings(guildId: string, settings: Partial<RadioSettings>) {
+  return apiFetch<{ success: boolean; settings: RadioSettings }>(`/radio/settings/${guildId}`, {
+    method: 'POST',
+    body: JSON.stringify(settings),
+  });
+}
+
+/**
+ * Start radio for a guild
+ */
+export function startRadio(guildId: string, algorithm: RadioSettings['algorithm'] = 'similarity') {
+  return apiFetch<{ success: boolean; enabled: boolean; algorithm: string }>(
+    `/radio/start/${guildId}`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ enabled: true, algorithm }),
+    },
+  );
+}
+
+/**
+ * Stop radio for a guild
+ */
+export function stopRadio(guildId: string) {
+  return apiFetch<{ success: boolean; enabled: boolean }>(`/radio/stop/${guildId}`, {
+    method: 'POST',
+  });
+}
+
+/**
+ * Get next track from radio queue
+ */
+export function getNextRadioTrack(guildId: string) {
+  return apiFetch<{ trackId: string | null; message?: string }>(`/radio/next/${guildId}`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
+/**
+ * Generate radio recommendations
+ */
+export function generateRadioRecommendations(
+  guildId: string,
+  candidateTracks: TrackInfo[],
+  count: number = 5,
+) {
+  return apiFetch<{
+    recommendations: Array<{
+      track: TrackInfo;
+      score: number;
+      reason: string;
+    }>;
+    count: number;
+  }>(`/radio/recommendations/${guildId}`, {
+    method: 'POST',
+    body: JSON.stringify({ candidateTracks, count }),
+  });
+}
+
+/**
+ * Track a playback event
+ */
+export function trackPlayback(guildId: string, event: PlaybackEvent) {
+  return apiFetch<{ success: boolean; message: string }>(`/radio/playback/${guildId}`, {
+    method: 'POST',
+    body: JSON.stringify(event),
+  });
+}
+
+/**
+ * Get playback history
+ */
+export function getPlaybackHistory(guildId: string, hours: number = 24) {
+  return apiFetch<{ history: string[]; count: number; hours: number }>(
+    `/radio/history/${guildId}?hours=${hours}`,
+  );
+}

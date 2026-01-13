@@ -6,6 +6,8 @@ import {
   type VoiceBasedChannel,
 } from 'discord.js';
 import { Node, type NodeOptions, type Player } from 'lavaclient';
+import * as apiClient from './lib/api-client.js';
+import crypto from 'node:crypto';
 
 const DEFAULT_LAVALINK_HOST = 'lavalink';
 const DEFAULT_LAVALINK_PORT = 2333;
@@ -304,7 +306,7 @@ export class MusicManager {
     throw new Error('Unexpected Lavalink response.');
   }
 
-  async play(guildId: string, track: LoadedTrack): Promise<PlayResult> {
+  async play(guildId: string, track: LoadedTrack, requestedBy?: string): Promise<PlayResult> {
     await this.ensureNodeReady();
 
     const existingPlayer = this.node.players.resolve(guildId) as
@@ -315,6 +317,9 @@ export class MusicManager {
       | undefined;
     const hint = existingPlayer?.track ?? existingPlayer?.state?.track ?? existingPlayer?.current;
     const hasActiveTrack = this.nowPlaying.has(guildId) || Boolean(hint);
+
+    // Store who requested this track
+    (track as any).requestedBy = requestedBy || 'user';
 
     if (!hasActiveTrack) {
       await this.startTrack(guildId, track);
@@ -347,6 +352,13 @@ export class MusicManager {
     if (!player || !current) {
       throw new Error('There is no track playing right now.');
     }
+
+    // Track user skip
+    await this.trackPlaybackEvent(guildId, current, {
+      completionRate: 0.3, // Assume they listened to some of it
+      skipped: true,
+      skipReason: 'user',
+    });
 
     this.nowPlaying.delete(guildId);
     await player.stop();
@@ -393,11 +405,45 @@ export class MusicManager {
         return;
       }
 
+      // Track successful playback
+      const currentTrack = this.nowPlaying.get(guildId);
+      if (currentTrack && reason === 'FINISHED') {
+        await this.trackPlaybackEvent(guildId, currentTrack, {
+          completionRate: 1.0,
+          skipped: false,
+        });
+      }
+
       this.nowPlaying.delete(guildId);
       await this.playNextFromQueue(guildId);
     };
 
-    const onTrackFailure: PlayerEventListener = async () => {
+    const onTrackFailure: PlayerEventListener = async (event: unknown) => {
+      // Track failed playback
+      const currentTrack = this.nowPlaying.get(guildId);
+      if (currentTrack) {
+        await this.trackPlaybackEvent(guildId, currentTrack, {
+          completionRate: 0,
+          skipped: true,
+          skipReason: 'error',
+        });
+      }
+
+      this.nowPlaying.delete(guildId);
+      await this.playNextFromQueue(guildId);
+    };
+
+    const onTrackStuck: PlayerEventListener = async () => {
+      // Track stuck playback
+      const currentTrack = this.nowPlaying.get(guildId);
+      if (currentTrack) {
+        await this.trackPlaybackEvent(guildId, currentTrack, {
+          completionRate: 0.5, // Assume it got halfway
+          skipped: true,
+          skipReason: 'stuck',
+        });
+      }
+
       this.nowPlaying.delete(guildId);
       await this.playNextFromQueue(guildId);
     };
@@ -405,7 +451,7 @@ export class MusicManager {
     const registrations: PlayerListenerRegistration[] = [
       { event: 'trackEnd', listener: onTrackEnd },
       { event: 'trackException', listener: onTrackFailure },
-      { event: 'trackStuck', listener: onTrackFailure },
+      { event: 'trackStuck', listener: onTrackStuck },
     ];
 
     for (const { event, listener } of registrations) {
@@ -430,29 +476,151 @@ export class MusicManager {
 
   private async playNextFromQueue(guildId: string) {
     const queue = this.queues.get(guildId);
-    if (!queue || queue.length === 0) {
-      this.queues.delete(guildId);
-      return;
+
+    // Try user queue first (priority)
+    if (queue && queue.length > 0) {
+      const next = queue.shift();
+      if (!queue.length) {
+        this.queues.delete(guildId);
+      } else {
+        this.queues.set(guildId, queue);
+      }
+
+      if (next) {
+        try {
+          await this.startTrack(guildId, next);
+          console.info(`Auto-playing queued track in guild ${guildId}: ${next.info.title}`);
+          return;
+        } catch (error) {
+          console.error('Failed to play queued track', error);
+          await this.playNextFromQueue(guildId);
+          return;
+        }
+      }
     }
 
-    const next = queue.shift();
-    if (!queue.length) {
-      this.queues.delete(guildId);
-    } else {
-      this.queues.set(guildId, queue);
-    }
+    // User queue is empty - try radio
+    this.queues.delete(guildId);
+    await this.tryPlayRadioTrack(guildId);
+  }
 
-    if (!next) {
-      return;
-    }
-
+  /**
+   * Try to get and play next track from radio system
+   */
+  private async tryPlayRadioTrack(guildId: string) {
     try {
-      await this.startTrack(guildId, next);
-      console.info(`Auto-playing queued track in guild ${guildId}: ${next.info.title}`);
+      // Check if radio is enabled
+      const { settings } = await apiClient.getRadioSettings(guildId);
+
+      if (!settings.enabled) {
+        console.info(`Radio not enabled for guild ${guildId}, queue is empty`);
+        return;
+      }
+
+      // Get playback history to generate recommendations
+      const { history } = await apiClient.getPlaybackHistory(guildId, settings.historyLookbackHours);
+
+      if (history.length === 0) {
+        console.info(`Radio has no history for guild ${guildId}, need to play songs first`);
+        return;
+      }
+
+      // Use recent history as candidate tracks for recommendations
+      // In a real implementation, you'd have a larger pool of available tracks
+      // For now, we'll use the history to search for similar tracks
+      console.info(`🎵 Generating radio recommendations for guild ${guildId} based on ${history.length} tracks in history`);
+
+      // Generate recommendations by searching for tracks similar to what was played
+      const recentTrackId = history[0]; // Most recent track
+      if (!recentTrackId) {
+        console.info(`No recent tracks found for guild ${guildId}`);
+        return;
+      }
+
+      // Search for a similar track using the most recent one as a seed
+      // This uses YouTube search with the track ID as a query
+      const searchQuery = `${recentTrackId} similar songs`;
+      const track = await this.loadTrack(searchQuery);
+
+      // Track this as a radio play
+      await this.startTrack(guildId, track);
+      console.info(`🎵 Radio playing similar track in guild ${guildId}: ${track.info.title}`);
+
     } catch (error) {
-      console.error('Failed to play queued track', error);
-      await this.playNextFromQueue(guildId);
+      console.error('Failed to play radio track:', error);
+      // Don't retry - just let the queue stay empty
     }
+  }
+
+  /**
+   * Track playback event for analytics and radio learning
+   */
+  private async trackPlaybackEvent(
+    guildId: string,
+    track: LoadedTrack,
+    options: {
+      requestedBy?: string;
+      completionRate?: number;
+      skipped?: boolean;
+      skipReason?: 'user' | 'error' | 'stuck';
+    } = {},
+  ) {
+    try {
+      const trackId = this.generateTrackId(track);
+
+      // Get requestedBy from track metadata if available
+      const requestedBy = options.requestedBy || (track as any).requestedBy || 'radio';
+
+      const event: apiClient.PlaybackEvent = {
+        trackId,
+        trackTitle: track.info.title,
+        trackSource: this.detectSource(track.info.uri || ''),
+        requestedBy,
+      };
+
+      // Only add optional fields if they have values
+      if (track.info.author) {
+        event.trackAuthor = track.info.author;
+      }
+      if (track.info.uri) {
+        event.trackUri = track.info.uri;
+      }
+      if (options.completionRate !== undefined) {
+        event.completionRate = options.completionRate;
+      }
+      if (options.skipped !== undefined) {
+        event.skipped = options.skipped;
+      }
+      if (options.skipReason !== undefined) {
+        event.skipReason = options.skipReason;
+      }
+
+      console.info(`📊 Tracking playback: ${track.info.title} (requested by: ${requestedBy}, completed: ${event.completionRate || 0})`);
+      await apiClient.trackPlayback(guildId, event);
+    } catch (error) {
+      console.error('Failed to track playback event:', error);
+      // Don't throw - tracking failures shouldn't stop playback
+    }
+  }
+
+  /**
+   * Generate consistent track ID from track info
+   */
+  private generateTrackId(track: LoadedTrack): string {
+    const uri = track.info.uri || track.info.title;
+    const input = `youtube:${uri}:${track.info.author || ''}`;
+    return crypto.createHash('sha256').update(input).digest('hex').substring(0, 32);
+  }
+
+  /**
+   * Detect track source from URI
+   */
+  private detectSource(uri: string): apiClient.PlaybackEvent['trackSource'] {
+    if (uri.includes('youtube.com') || uri.includes('youtu.be')) return 'youtube';
+    if (uri.includes('soundcloud.com')) return 'soundcloud';
+    if (uri.includes('bandcamp.com')) return 'bandcamp';
+    if (uri.includes('spotify.com')) return 'spotify';
+    return 'http';
   }
 
   private async resolveMember(interaction: ChatInputCommandInteraction): Promise<GuildMember> {
