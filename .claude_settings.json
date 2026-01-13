@@ -1,0 +1,39 @@
+{
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true
+  },
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Read(./**)",
+      "Write(./**)",
+      "Edit(./**)",
+      "Glob(./**)",
+      "Grep(./**)",
+      "Read(/home/belcaik/Dev/tonedial/.auto-claude/worktrees/tasks/001-resolver-error-err-ssl-protocol-error-en-api-synca/**)",
+      "Write(/home/belcaik/Dev/tonedial/.auto-claude/worktrees/tasks/001-resolver-error-err-ssl-protocol-error-en-api-synca/**)",
+      "Edit(/home/belcaik/Dev/tonedial/.auto-claude/worktrees/tasks/001-resolver-error-err-ssl-protocol-error-en-api-synca/**)",
+      "Glob(/home/belcaik/Dev/tonedial/.auto-claude/worktrees/tasks/001-resolver-error-err-ssl-protocol-error-en-api-synca/**)",
+      "Grep(/home/belcaik/Dev/tonedial/.auto-claude/worktrees/tasks/001-resolver-error-err-ssl-protocol-error-en-api-synca/**)",
+      "Read(/home/belcaik/Dev/tonedial/.auto-claude/worktrees/tasks/001-resolver-error-err-ssl-protocol-error-en-api-synca/.auto-claude/specs/001-resolver-error-err-ssl-protocol-error-en-api-synca/**)",
+      "Write(/home/belcaik/Dev/tonedial/.auto-claude/worktrees/tasks/001-resolver-error-err-ssl-protocol-error-en-api-synca/.auto-claude/specs/001-resolver-error-err-ssl-protocol-error-en-api-synca/**)",
+      "Edit(/home/belcaik/Dev/tonedial/.auto-claude/worktrees/tasks/001-resolver-error-err-ssl-protocol-error-en-api-synca/.auto-claude/specs/001-resolver-error-err-ssl-protocol-error-en-api-synca/**)",
+      "Read(/home/belcaik/Dev/tonedial/.auto-claude/**)",
+      "Write(/home/belcaik/Dev/tonedial/.auto-claude/**)",
+      "Edit(/home/belcaik/Dev/tonedial/.auto-claude/**)",
+      "Glob(/home/belcaik/Dev/tonedial/.auto-claude/**)",
+      "Grep(/home/belcaik/Dev/tonedial/.auto-claude/**)",
+      "Bash(*)",
+      "WebFetch(*)",
+      "WebSearch(*)",
+      "mcp__context7__resolve-library-id(*)",
+      "mcp__context7__get-library-docs(*)",
+      "mcp__graphiti-memory__search_nodes(*)",
+      "mcp__graphiti-memory__search_facts(*)",
+      "mcp__graphiti-memory__add_episode(*)",
+      "mcp__graphiti-memory__get_episodes(*)",
+      "mcp__graphiti-memory__get_entity_edge(*)"
+    ]
+  }
+}
