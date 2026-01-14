@@ -141,6 +141,31 @@ header {
   gap: 0.5rem;
 }
 
+.candidate-cover {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 460 / 215;
+  object-fit: cover;
+  border-radius: 0.5rem;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.candidate-cover-placeholder {
+  width: 100%;
+  aspect-ratio: 460 / 215;
+  background: linear-gradient(135deg, rgba(108, 92, 231, 0.3), rgba(162, 155, 254, 0.2));
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.candidate-cover-placeholder span {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.5);
+}
+
 .slot-track {
   width: 100%;
   max-width: 500px;
