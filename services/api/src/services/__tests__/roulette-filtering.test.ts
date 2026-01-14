@@ -51,8 +51,8 @@ describe('roulette filtering logic', () => {
     }
 
     assert.equal(filtered.length, 2, 'should include all multiplayer games');
-    assert.equal(filtered[0].appId, 10);
-    assert.equal(filtered[1].appId, 20);
+    assert.equal(filtered[0]?.appId, 10);
+    assert.equal(filtered[1]?.appId, 20);
   });
 
   it('includes games without metadata (permissive approach)', () => {
@@ -76,9 +76,9 @@ describe('roulette filtering logic', () => {
     }
 
     assert.equal(filtered.length, 3, 'should include all games without metadata');
-    assert.equal(filtered[0].appId, 100);
-    assert.equal(filtered[1].appId, 200);
-    assert.equal(filtered[2].appId, 300);
+    assert.equal(filtered[0]?.appId, 100);
+    assert.equal(filtered[1]?.appId, 200);
+    assert.equal(filtered[2]?.appId, 300);
   });
 
   it('correctly handles mixed scenario with some metadata available', () => {
@@ -107,8 +107,8 @@ describe('roulette filtering logic', () => {
     // Should include: appId 2 (multiplayer), appId 3 (no metadata), appId 4 (no metadata)
     // Should exclude: appId 1 (confirmed single-player)
     assert.equal(filtered.length, 3, 'should filter correctly in mixed scenario');
-    assert.equal(filtered[0].appId, 2, 'should include confirmed multiplayer game');
-    assert.equal(filtered[1].appId, 3, 'should include game without metadata');
-    assert.equal(filtered[2].appId, 4, 'should include second game without metadata');
+    assert.equal(filtered[0]?.appId, 2, 'should include confirmed multiplayer game');
+    assert.equal(filtered[1]?.appId, 3, 'should include game without metadata');
+    assert.equal(filtered[2]?.appId, 4, 'should include second game without metadata');
   });
 });

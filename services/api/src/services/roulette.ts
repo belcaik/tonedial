@@ -97,7 +97,7 @@ export async function createRouletteSession(payload: CreateSessionPayload) {
       }
       if (
         data.rules.minPlayers &&
-        metadata.maxPlayers &&
+        metadata?.maxPlayers &&
         metadata.maxPlayers < data.rules.minPlayers
       ) {
         continue;
@@ -105,10 +105,10 @@ export async function createRouletteSession(payload: CreateSessionPayload) {
 
       finalCandidates.push({
         appId: candidate.appId,
-        name: metadata.name ?? candidate.name,
+        name: metadata?.name ?? candidate.name,
         owners: Array.from(candidate.owners),
-        isMultiplayer: metadata.isMultiplayer,
-        maxPlayers: metadata.maxPlayers,
+        isMultiplayer: metadata?.isMultiplayer ?? true,
+        maxPlayers: metadata?.maxPlayers,
         weight: data.rules.baseWeight,
         votes: [],
       });
