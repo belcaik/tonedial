@@ -88,3 +88,6 @@ services/activity/.tsbuild/
 
 
 */certs/*
+
+# Auto Claude data directory
+.auto-claude/

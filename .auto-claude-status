@@ -1,0 +1,25 @@
+{
+  "active": true,
+  "spec": "003-fix-roulette-discord-activity-launch-and-ui-issues",
+  "state": "building",
+  "subtasks": {
+    "completed": 0,
+    "total": 13,
+    "in_progress": 1,
+    "failed": 0
+  },
+  "phase": {
+    "current": "Schema Updates",
+    "id": null,
+    "total": 2
+  },
+  "workers": {
+    "active": 0,
+    "max": 1
+  },
+  "session": {
+    "number": 1,
+    "started_at": "2026-01-13T23:55:37.803836"
+  },
+  "last_update": "2026-01-13T23:55:37.861289"
+}
