@@ -22,6 +22,7 @@ export async function ensureGamesMetadata(appIds: number[]): Promise<Map<number,
       categories: row.categories,
       isMultiplayer: row.isMultiplayer,
       maxPlayers: row.maxPlayers ?? undefined,
+      headerImageUrl: getSteamHeaderImageUrl(row.appId),
       updatedAt: row.updatedAt?.toISOString() ?? new Date().toISOString(),
     });
   });
@@ -89,4 +90,8 @@ function chunkArray<T>(values: T[], size: number) {
 
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getSteamHeaderImageUrl(appId: number): string {
+  return `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/header.jpg`;
 }
