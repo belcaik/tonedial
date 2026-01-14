@@ -400,6 +400,18 @@ export default function App({ discord, fallbackError }: AppProps) {
             <div className="candidates-grid">
               {filteredCandidates.map((candidate) => (
                 <article key={candidate.appId} className="candidate-card">
+                  {candidate.headerImageUrl ? (
+                    <img
+                      src={candidate.headerImageUrl}
+                      alt={`${candidate.name} cover art`}
+                      className="candidate-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="candidate-cover-placeholder">
+                      <span>{candidate.name.charAt(0).toUpperCase()}</span>
+                    </div>
+                  )}
                   <h3>{candidate.name}</h3>
                   <p>AppID: {candidate.appId}</p>
                   <p>Owners: {candidate.owners.length}</p>
