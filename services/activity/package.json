@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@discord/embedded-app-sdk": "^2.4.0",
     "@tonedial/shared": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
