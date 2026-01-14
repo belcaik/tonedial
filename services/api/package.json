@@ -10,7 +10,8 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "migrate": "drizzle-kit migrate",
-    "generate": "drizzle-kit generate"
+    "generate": "drizzle-kit generate",
+    "test": "tsx --test src/lib/__tests__/*.test.ts src/services/__tests__/*.test.ts"
   },
   "dependencies": {
     "@fastify/cors": "^9.0.1",

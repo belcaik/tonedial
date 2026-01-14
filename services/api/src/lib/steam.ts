@@ -8,6 +8,8 @@ const STEAM_OPENID_ENDPOINT = 'https://steamcommunity.com/openid/login';
 const STEAM_API_HOST = 'https://api.steampowered.com';
 const STEAM_STORE_API = 'https://store.steampowered.com/api/appdetails';
 const METADATA_BATCH_SIZE = 20;
+const MAX_RETRY_ATTEMPTS = 3;
+const INITIAL_BACKOFF_MS = 1000;
 
 export type OpenIdPayload = Record<string, string | string[]>;
 
@@ -157,37 +159,68 @@ export async function fetchGameMetadataBatch(appIds: number[]): Promise<Map<numb
   url.searchParams.set('appids', appIds.join(','));
   url.searchParams.set('filters', 'basic,categories,genres');
 
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new SteamMetadataError(`Steam appdetails failed with status ${response.status}`, response.status);
-  }
+  let lastError: Error | null = null;
 
-  const json = (await response.json()) as Record<string, { success: boolean; data?: any }>;
+  for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt++) {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        const isRetryable = response.status >= 500 || response.status === 429;
+        if (!isRetryable || attempt === MAX_RETRY_ATTEMPTS - 1) {
+          throw new SteamMetadataError(`Steam appdetails failed with status ${response.status}`, response.status);
+        }
+        lastError = new SteamMetadataError(`Steam appdetails failed with status ${response.status}`, response.status);
+        const backoffMs = INITIAL_BACKOFF_MS * Math.pow(2, attempt);
+        console.warn(`Steam API retry attempt ${attempt + 1}/${MAX_RETRY_ATTEMPTS} after ${response.status} error, waiting ${backoffMs}ms`);
+        await sleep(backoffMs);
+        continue;
+      }
 
-  for (const appId of appIds) {
-    const entry = json[String(appId)];
-    if (!entry?.success || !entry.data) {
-      map.set(appId, null);
-      continue;
+      const json = (await response.json()) as Record<string, { success: boolean; data?: any }>;
+
+      for (const appId of appIds) {
+        const entry = json[String(appId)];
+        if (!entry?.success || !entry.data) {
+          map.set(appId, null);
+          continue;
+        }
+
+        const categories = Array.isArray(entry.data.categories)
+          ? entry.data.categories.map((cat: { description: string }) => cat.description)
+          : [];
+
+        const isMultiplayer = categories.some((category: string) => MULTIPLAYER_TAGS.has(category));
+
+        map.set(appId, {
+          appId,
+          name: entry.data.name,
+          categories,
+          isMultiplayer,
+          maxPlayers: undefined,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+
+      return map;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      if (error instanceof SteamMetadataError && error.status && error.status < 500 && error.status !== 429) {
+        throw error;
+      }
+      if (attempt === MAX_RETRY_ATTEMPTS - 1) {
+        throw lastError;
+      }
+      const backoffMs = INITIAL_BACKOFF_MS * Math.pow(2, attempt);
+      console.warn(`Steam API retry attempt ${attempt + 1}/${MAX_RETRY_ATTEMPTS} after error: ${lastError.message}, waiting ${backoffMs}ms`);
+      await sleep(backoffMs);
     }
-
-    const categories = Array.isArray(entry.data.categories)
-      ? entry.data.categories.map((cat: { description: string }) => cat.description)
-      : [];
-
-    const isMultiplayer = categories.some((category: string) => MULTIPLAYER_TAGS.has(category));
-
-    map.set(appId, {
-      appId,
-      name: entry.data.name,
-      categories,
-      isMultiplayer,
-      maxPlayers: undefined,
-      updatedAt: new Date().toISOString(),
-    });
   }
 
-  return map;
+  throw lastError || new Error('Failed to fetch game metadata after retries');
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 export class SteamMetadataError extends Error {
   constructor(message: string, readonly status?: number) {

@@ -128,7 +128,6 @@
     "zsh"
   ],
   "stack_commands": [
-    "composer",
     "createdb",
     "createuser",
     "dive",
@@ -140,29 +139,18 @@
     "dropuser",
     "eslint",
     "initdb",
-    "ipython",
-    "jupyter",
     "node",
-    "notebook",
     "npm",
     "npx",
-    "pdb",
     "pg_ctl",
     "pg_dump",
     "pg_dumpall",
     "pg_isready",
     "pg_restore",
-    "php",
-    "pip",
-    "pip3",
-    "pipx",
     "pnpm",
     "pnpx",
     "postgres",
     "psql",
-    "pudb",
-    "python",
-    "python3",
     "redis-benchmark",
     "redis-cli",
     "redis-server",
@@ -179,10 +167,8 @@
   "custom_commands": [],
   "detected_stack": {
     "languages": [
-      "python",
       "javascript",
-      "typescript",
-      "php"
+      "typescript"
     ],
     "package_managers": [
       "pnpm"
@@ -213,7 +199,7 @@
     "cargo_aliases": [],
     "shell_scripts": []
   },
-  "project_dir": "/home/belcaik/Dev/tonedial",
-  "created_at": "2026-01-13T21:03:00.517425",
-  "project_hash": "da98dd9a0634a2e6a878095ccf2b9703"
+  "project_dir": "/home/belcaik/Dev/tonedial/.auto-claude/worktrees/tasks/002-fix-discord-activity-blank-screen-and-multiplayer-",
+  "created_at": "2026-01-13T21:22:38.545959",
+  "project_hash": "b549922ae83cc1c9aa93eb28d45d8cae"
 }

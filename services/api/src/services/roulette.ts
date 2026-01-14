@@ -76,10 +76,23 @@ export async function createRouletteSession(payload: CreateSessionPayload) {
 
     const metadataMap = await ensureGamesMetadata(ownershipFiltered.map((entry) => entry.appId));
 
+    console.log('[Roulette Debug] owned games metadata filtering candidates:', {
+      totalCandidates: ownershipFiltered.length,
+      candidateAppIds: ownershipFiltered.map((c) => c.appId),
+      metadataFetched: metadataMap.size,
+      metadataEntries: Array.from(metadataMap.entries()).map(([appId, meta]) => ({
+        appId,
+        name: meta.name,
+        isMultiplayer: meta.isMultiplayer,
+        maxPlayers: meta.maxPlayers,
+      })),
+      minPlayersRequired: data.rules.minPlayers,
+    });
+
     const finalCandidates: RouletteGameCandidate[] = [];
     for (const candidate of ownershipFiltered) {
       const metadata = metadataMap.get(candidate.appId);
-      if (!metadata || !metadata.isMultiplayer) {
+      if (metadata && !metadata.isMultiplayer) {
         continue;
       }
       if (
