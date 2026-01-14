@@ -77,7 +77,7 @@ services:
     depends_on:
       - api
     ports:
-      - '6663:443'
+      - '5173:443'
     healthcheck:
       test:
         - CMD
