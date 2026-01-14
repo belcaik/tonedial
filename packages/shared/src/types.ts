@@ -103,6 +103,7 @@ export const rouletteGameCandidateSchema = z.object({
   owners: z.array(z.string()),
   isMultiplayer: z.boolean(),
   maxPlayers: z.number().int().positive().optional(),
+  headerImageUrl: z.string().optional(),
   weight: z.number().positive(),
   votes: z.array(z.string()),
 });
