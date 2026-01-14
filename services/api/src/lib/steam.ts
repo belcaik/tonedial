@@ -183,6 +183,7 @@ export async function fetchGameMetadataBatch(appIds: number[]): Promise<Map<numb
       categories,
       isMultiplayer,
       maxPlayers: undefined,
+      headerImageUrl: entry.data.header_image,
       updatedAt: new Date().toISOString(),
     });
   }
