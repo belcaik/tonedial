@@ -84,11 +84,42 @@ The bot features an embedded Discord Activity UI for real-time interaction, seam
 
 ### Prerequisites
 
-- [Docker](https://www.docker.com/) and Docker Compose
-- [Node.js](https://nodejs.org/) 20+ (for development)
-- [pnpm](https://pnpm.io/) 10.15.0
-- Discord Bot Token ([Discord Developer Portal](https://discord.com/developers/applications))
-- Steam API Key ([Steam API Key Registration](https://steamcommunity.com/dev/apikey))
+Before running ToneDial, ensure you have the following installed and configured:
+
+#### Required Software
+
+- **[Docker](https://docs.docker.com/get-docker/)** and **[Docker Compose](https://docs.docker.com/compose/install/)**
+  Used to run PostgreSQL, Redis, and Lavalink services. Docker Compose orchestrates all services with a single command.
+
+- **[Node.js](https://nodejs.org/)** 20 or higher
+  Required for development and building the TypeScript services. Check version with `node --version`.
+
+- **[pnpm](https://pnpm.io/installation)** 10.15.0
+  Package manager for the monorepo. Install globally with `npm install -g pnpm@10.15.0`.
+
+#### Required API Keys & Bot Setup
+
+- **Discord Bot Application** ([Discord Developer Portal](https://discord.com/developers/applications))
+  Create a new application and enable it as a bot. You'll need:
+  - **Bot Token** (`DISCORD_TOKEN`) — From the "Bot" tab
+  - **Application ID** (`DISCORD_APP_ID`) — From "General Information"
+  - **Public Key** (`DISCORD_PUBLIC_KEY`) — From "General Information"
+  - **Guild ID** (`DISCORD_GUILD_ID_DEV`) — Your test server ID (enable Developer Mode in Discord, right-click server → Copy ID)
+
+  **Important:** Enable the following bot permissions:
+  - Message Content Intent (required for commands)
+  - Server Members Intent (required for user data)
+  - Presence Intent (optional, for user status)
+
+- **Steam API Key** ([Steam API Key Registration](https://steamcommunity.com/dev/apikey))
+  Required for Steam library integration in the game roulette feature. Register with your Steam account to obtain a key.
+
+#### Optional (Managed by Docker)
+
+These services are automatically provisioned via Docker Compose and don't require separate installation:
+- PostgreSQL 16 (database)
+- Redis 7 (caching layer)
+- Lavalink (audio streaming server)
 
 ### Installation
 
