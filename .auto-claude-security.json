@@ -201,5 +201,6 @@
   },
   "project_dir": "/home/belcaik/Dev/tonedial/.auto-claude/worktrees/tasks/003-fix-roulette-discord-activity-launch-and-ui-issues",
   "created_at": "2026-01-13T23:55:58.574078",
-  "project_hash": "99da84ac58eadeaf1d15a6852f5b8f3e"
+  "project_hash": "99da84ac58eadeaf1d15a6852f5b8f3e",
+  "inherited_from": "/home/belcaik/Dev/tonedial"
 }

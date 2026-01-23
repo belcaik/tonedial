@@ -1,25 +1,25 @@
 {
   "active": true,
-  "spec": "003-fix-roulette-discord-activity-launch-and-ui-issues",
+  "spec": "004-comprehensive-readme-documentation",
   "state": "building",
   "subtasks": {
-    "completed": 9,
-    "total": 13,
+    "completed": 2,
+    "total": 9,
     "in_progress": 1,
     "failed": 0
   },
   "phase": {
-    "current": "Activity UI Updates",
+    "current": "README Creation",
     "id": null,
-    "total": 3
+    "total": 9
   },
   "workers": {
     "active": 0,
     "max": 1
   },
   "session": {
-    "number": 10,
-    "started_at": "2026-01-13T23:55:37.803836"
+    "number": 4,
+    "started_at": "2026-01-15T01:49:03.406932"
   },
-  "last_update": "2026-01-14T00:08:43.514272"
+  "last_update": "2026-01-15T01:55:39.803129"
 }
